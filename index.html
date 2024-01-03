@@ -1,44 +1,593 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang='en'>
 <head>
-	<title>Ruthvik chessy</title>
-	<meta charset="utf-8">
-	<link rel="stylesheet" href="css/style.css">
-</head>
-<body onload="setup();">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-<h1>RUTHVIK ERNI IS COOL</h1>
-<p id="turnInfo">Player's turn: <b>White</b></p>
-<section id="board">
-    <div class="overlay" id="promotionMessage">
-        <div class="overlay-inner">
-            <span class="overlay-title">Promotion!</span>
-            <p class="overlay-text" id="alertText"></p>
-            <ul id="promotionList" class="white">
-                <li><a href="#" class="promotion-button queen" onclick="promote('queen');"></a></li>
-                <li><a href="#" class="promotion-button castle" onclick="promote('castle');"></a></li>
-                <li><a href="#" class="promotion-button bishop" onclick="promote('bishop');"></a></li>
-                <li><a href="#" class="promotion-button knight" onclick="promote('knight');"></a></li>
-            </ul>
-        </div>
-    </div>
-	<div class="overlay" id="errorMessage">
-		<div class="overlay-inner">
-			<span class="overlay-title">Error!</span>
-			<p class="overlay-text" id="errorText"></p>
-			<a href="#" class="overlay-button" onclick="closeError();">Close</a>
-		</div>
-	</div>
-	<div class="overlay" id="endMessage">
-		<div class="overlay-inner">
-			<span class="overlay-title">Game Over!</span>
-			<p class="overlay-text" id="endText"></p>
-			<a href="#" class="overlay-button" onclick="newGame();">New Game</a>
-		</div>
-	</div>
+<title>Chess Board Editor - Apronus.com</title>
+<meta name="description" content="Chess Board Editor; Play Chess Against Computer from any set up position." />
+<meta name="keywords" content="chess,board,editor,chessboard,play,computer,diagram,animated" />
+
+<link rel='canonical' href='https://www.apronus.com/chess/pgnviewer/'>
+
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-90959-2', 'auto');
+  ga('set', 'anonymizeIp', true);
+  ga('send', 'pageview');
+</script>
+
+<style>
+body { font-family: Verdana; margin-left:10%; margin-right:10%; }
+img { display: block; }
+nav { line-height: 2; }
+nav a { white-space: nowrap; }
+h1,h2,h3 { font-size:100%; }
+
+#ad
+{
+ margin: 2em;
+ box-shadow: 0 0 1em 0.5em #bbbbbb;
+ background-color: #bbbbbb;
+ margin-top: 0;
+}
+#cookies
+{
+ font-weight: bold;
+ color: #555555;
+ margin-top: 2em;
+ text-align: center;
+}
+
+#fenpgnfieldset button { width: 11em; margin-top: 0.5em; margin-bottom: 0.5em; margin-right: 0.5em; }
+#fileinput { color: white; }
+#readfile { margin-top:1em; margin-bottom:1em; }
+#txtara { width: 22.5em; height: 200px; }
+
+.bystandersdiv { margin-bottom: 1em; }
+.bystandersdiv img { display: inline; margin:0; padding:0; border: 1px solid gray; }
+.bystandersdiv form { display: inline; }
+.bystandersdiv fieldset { display: inline; border: none; padding:0; margin:0; }
+
+#animagramform fieldset { display:inline; padding:0; border:none; }
+#animagramform input { margin:0.5em; }
+
+fieldset.inlinediv { display: inline; margin:0; padding:0; border:none; }
+
+</style>
+
+<style id='gallerysquareimage'>
+#gallery img { width: 24px; height: 24px; }
+</style>
+
+
+
+
+<script>
+function replace(a,m,r) { var s = a.replace(m,r); if (s == a) return s; return replace(s,m,r); }
+
+var getdata = document.location.search + '&';
+var rezu;
+
+var width = 8;
+rezu = /w=\d+&/.exec(getdata);
+if (rezu) width = parseInt((rezu[0].substring(2,rezu[0].length)).replace("&",""));
+
+var height = 8;
+rezu = /h=\d+&/.exec(getdata);
+if (rezu) height = parseInt((rezu[0].substring(2,rezu[0].length)).replace("&",""));
+
+var whostarts="White";
+rezu = /s=[bB].*&/.exec(getdata);
+if (rezu) whostarts = "Black";
+
+var poza = "";
+rezu = /p=[_ABCDEFGHIJKLMNOP]{1}[KQRBNPkqrbnp_]+\d{0,1}[bw]{0,1}&/.exec(getdata);
+if (rezu) poza = (rezu[0].substring(2,rezu[0].length)).replace("&","");
+
+if (poza.length == width*height+1) poza += '0';
+if ((poza.charAt(0)) == '_') poza = "A"+poza.substring(1,poza.length);
+
+if (poza.length > width*height+2 )
+{
+ if (poza[width*height+2] == 'w') whostarts = "White";
+ else
+ if (poza[width*height+2] == 'b') whostarts = "Black";
+ poza = poza.substring(0,width*height+2);
+}
+if (poza.length < width*height+2) poza = "";
+
+
+var ruchy = "";
+rezu = /m=[\w-]*&/.exec(replace(getdata,"*","qq2ww"));
+if (rezu) ruchy = (rezu[0].substring(2,rezu[0].length)).replace("&","");
+ruchy = replace(ruchy,"qq2ww","+");
+
+function ileruchowjest()
+{
+ if (ruchy == "") return 0;
+ return ruchy.split("_").length;
+}
+
+var halfmove_number = ileruchowjest();
+rezu = /n=\d*&/.exec(getdata);
+if (rezu) halfmove_number = parseInt((rezu[0].substring(2,rezu[0].length)).replace("&",""));
+
+var flip = "";
+rezu = /f=.*&/.exec(getdata);
+if (rezu) flip = (rezu[0].substring(2,rezu[0].length)).replace("&","");
+
+
+
+
+var flipb = false;
+</script>
+
+
+<script>
+const korpalskichess = new URLSearchParams(window.location.search).get('korpalskichess');
+if (korpalskichess === '1')
+{
+	width = 17;
+	height = 8;
+	poza = 'A_________PPPPPPPP_________NNBBRRQK_____________________________________________________________________________nnbbrrqk_________pppppppp0';
+}
+</script>
+
+
+<script>
+const wizboardpath = 'https://www.apronus.com/chess/wizboard/';
+</script>
+<script src='https://www.apronus.com/chess/wizboard/pgnviewer/pgnviewer-scripts.php'></script>
+
+<script>
+ squaresize = 36;
+ a1 = 'dark';
+ WIDTH = width;
+ HEIGHT = height;
+ initsquaresArray();
+ initbystanders();
+ initstartingposition();
+ inithistoria();
+</script>
+
+
+</head>
+
+<body id="idbody">
+<script>
+document.getElementById('idbody').onkeydown = keywaspressed;
+function keywaspressed(e)
+{
+ if (document.activeElement.nodeName == 'TEXTAREA') return; 
+ e = e || event;
+ if (e.keyCode == 37) { yesterday('aaa'); update_export(); }
+ if (e.keyCode == 39) { tomorrow('aaa'); update_export(); }
+}
+</script>
+
+<nav>
+<a href='//www.apronus.com/'>Apronus Home</a> |
+<a href='//www.apronus.com/chess/'>Chess</a> |
+<a href='https://www.apronus.com/chess/puzzles/'>Puzzles</a> |
+<a href='//www.apronus.com/chess/puzzle/editor.php'>Puzzle Editor</a> |
+<a href='//www.apronus.com/chess/playcomputer/'>Play computer</a> |
+<a href='//www.apronus.com/chess/pgnviewer/'>Board Editor</a> |
+<a href='//www.apronus.com/chess/diagram/editor/'>Diagram Editor</a> |
+<a href='//www.apronus.com/chess/diagram/animated/'>Animated Diagram</a> |
+<a href='//www.apronus.com/chess/romantic-chess-variant.htm'>Romantic Chess</a>
+</nav>
+
+<div style='margin:0.5em 0 0.5em 0;'>
+
+<aside>
+<div style='background:rgb(255,165,0,0.2); padding:0.5em; text-align:center;'>
+This website needs financial support.
+Please consider <b>donating regularly</b> to keep it functional.
+<form action='https://www.paypal.com/donate' method='post' target='_blank' style='display:inline-block; vertical-align:bottom;'>
+<input type='hidden' name='hosted_button_id' value='9VK6UYRG6JEBQ' />
+<input type='submit' value='Donate' />
+<img alt='' style='border:0' src='https://www.paypal.com/en_US/i/scr/pixel.gif' width='1' height='1' />
+</form>
+</div>
+</aside>
+</div>
+
+<header>
+<h1>PGN Viewer and Editor <i>with Chess Puzzle Editor</i></h1>
+<ul>
+<li>online interactive chessboard with PGN viewer and editor, diagram editor and puzzle editor
+<li>set up any position to play against computer or analyze with a chess engine
+<li>make diagrams with arrows and selected squares
+    or animations indicating moves with arrows
+<li>create links to your chess positions or embed chessboards on your own pages
+<li>design chess puzzles:
+<ul>
+<li>the computer replies even if the user goes wrong
+<li>the computer tries multiple defenses before admitting success
+<li>the user is allowed a choice of alternative solutions
+</ul>
+
+<div id='demolink' style='background: #ffa; font-weight: bold; border: thick solid #ffa; display: inline-block;'>
+<a style='white-space:nowrap;' target='_blank' href='https://korpalskichess.com'>Chess for Kids</a> and
+<a style='white-space:nowrap;' target='_blank' href='https://szachydzieciom.pl'>Szachy dla dzieci</a>
+have hundreds of puzzles made here.
+</div>
+<script>
+function democlick()
+{
+	galuj('Chess', 'democlick', 'pgnviewer');
+}
+demolink.addEventListener('click',democlick);
+</script>
+
+</ul>
+</header>
+
+<div>
+<fieldset style='display:inline; border:none; padding:0; margin-bottom:1em;'
+>Use click-click (drag and drop is not supported).</fieldset>
+
+<FIELDSET id='puzzlefieldset' style='display:inline; padding:0; border:none; vertical-align:top;'>
+<button style='margin-left:1em; margin-right:1em;'
+onclick="window.open(puzzleURL(false));">Puzzle Editor</button>
+</FIELDSET>
+</div>
+
+<script>
+if (WIDTH != 8 || HEIGHT != 8) document.getElementById('puzzlefieldset').style.display = 'none';
+</script>
+
+
+<p>
+<input type='radio' name='whichview' id='draftboard' onclick='refreshview();'><span style='margin-right:1em;'>position setup</span>
+<input type='radio' name='whichview' id='playboard'  onclick='refreshview();' checked>legal moves only
+</p>
+
+<script>
+function refreshview()
+{
+ var a = document.getElementById('playboard');
+ if (a.checked)
+ {
+  document.getElementById('playboardfieldset').style.display = 'inline';
+  document.getElementById('fenpgnfieldset').style.display = 'inline';
+  document.getElementById('draftboardfieldset').style.display = 'none';
+  reset_playboard('aaa',getwidth('aaa'),getheight('aaa'),positionstring(),whotomove(),flipb);
+  update_export();  
+ }
+ else
+ {
+  document.getElementById('playboardfieldset').style.display = 'none';
+  document.getElementById('fenpgnfieldset').style.display = 'none';
+  document.getElementById('draftboardfieldset').style.display = 'inline';
+  reset_draftboard(pozycjaporuchu('aaa',gethalfmovenumber('aaa')));
+ }
+}
+</script>
+
+
+<!--
+<button
+onclick="reset_playboard('aaa',getwidth('aaa'),getheight('aaa'),positionstring(),whotomove(),flipb);update_export();"
+>&gt;&gt;&gt;</button>
+
+<button onclick="reset_draftboard(pozycjaporuchu('aaa',gethalfmovenumber('aaa')))">&lt;&lt;&lt;</button>
+-->
+
+<hr style='border: 0px solid white; margin-bottom:1em;'>
+
+<FIELDSET id='playboardfieldset' style='display:inline; vertical-align:top; text-align:center; border:none;'>
+
+<div style='margin-bottom:1em;'>
+
+<form id='animatedform' style='display:inline;'>
+<input type='checkbox' id='isanimated' checked>animated
+<input type="button" value="diagram" onclick="submit_animated();">
+<input type='hidden' name='de' value='120'>
+<input type="hidden" name="a"><input type="hidden" name="d">
+<input type="hidden" name="w"><input type="hidden" name="h">
+<input type="hidden" name="f"><input type="hidden" name="l">
+</form>
+
+<button onclick="makeurl();" style='margin-left:1em;'>link to share</button>
+
+</div>
+
+<script>
+var aaa = init_playboard("aaa",width,height,poza,ruchy,whostarts,halfmove_number,flip);
+</script>
+
+</FIELDSET>
+
+<FIELDSET id='fenpgnfieldset' style='display:inline; padding:0; width: 24.5em; border:none; '>
+
+<button onclick="absorbmoves();">Absorb FEN or PGN</button>
+<button onclick="document.forms.exportform.outputarea.value='';">Clear</button>
+<br>
+<button onclick="moves1();">show PGN</button>
+<button onclick="showfen();">show FEN</button>
+
+<form  name="exportform" target="_blank" method="post">
+<input type="hidden" name="extension">
+<textarea id='txtara' name="outputarea"></textarea>
+</form>
+
+
+<button onclick="document.forms.exportform.action='//www.apronus.com/chess/download.php';
+moves1(); document.forms.exportform.extension.value = 'pgn';
+document.forms.exportform.submit();">download PGN</button>
+<button onclick="document.forms.exportform.action='//www.apronus.com/chess/download.php';
+showfen(); document.forms.exportform.extension.value = 'fen';
+document.forms.exportform.submit();">download FEN</button>
+
+
+<div id='readfile'>Read PGN or FEN: <input type="file" id="fileinput" size="1" style='width:12em;' /></div>
+<script>
+document.getElementById('fileinput').addEventListener('change', readSingleFile, false);
+function readSingleFile(evt)
+{
+ var f = evt.target.files[0]; 
+ if (f)
+ {
+  var r = new FileReader();
+  r.onload = function(e){document.forms.exportform.outputarea.value = e.target.result; absorbmoves();}
+  r.readAsText(f);
+ }
+ else {alert("Failed to load file");}
+}
+</script>
+
+<button onclick='document.forms.exportform.outputarea.value = html_init("aaa");
+                 document.forms.exportform.outputarea.select();'>HTML code to embed this chessboard</button>
+
+</FIELDSET>
+
+
+<FIELDSET id='draftboardfieldset' style='display:none; padding:0; margin:0; border:none;'>
+
+<div class='bystandersdiv'>
+<script>
+function htmlbystanders_mobile()
+{
+ doc  = '';
+ doc += '<fieldset>';
+ for (var n= WIDTH * HEIGHT; n <= WIDTH * HEIGHT + 5; n++)
+ {
+  doc += '<img' ;
+  doc += " name=sq" + n;
+  doc += " onmousedown='z(" + n + ")' >";
+ }
+ doc += '</fieldset><fieldset>';
+ for (var n= WIDTH * HEIGHT + 6; n <= WIDTH * HEIGHT + 12; n++)
+ {
+  doc += '<img' ;
+  doc += " name=sq" + n;
+  doc += " onmousedown='z(" + n + ")' >";
+ }
+ doc += '</fieldset><fieldset>';
+ doc += "<form name=holdform>";
+ doc += "<input type=checkbox name=holdkeeper onchange='onholdchange()'> Hold</form>";
+ doc += "</fieldset>";
+ return doc;
+}
+document.write(htmlbystanders_mobile());
+</script>
+</div>
+
+<fieldset style='display:inline; padding:0; border:none;'>
+<script>
+document.write(htmlszachownica());
+reloadsquaresize(); reloadbystanders(); reloadboard();
+</script>
+</fieldset>
+
+<fieldset style='display:inline; text-align:center; vertical-align:top; padding:0; border:none; '>
+
+<form name='make_draft_diagram' id='draftboardstilldiagramform'
+  style='display:inline; padding:0; margin:0;'
+  target='_blank' method='get'
+  action='//www.apronus.com/chess/diagram/editor/'
+  onsubmit="this.d.value = positionstring(); this.w.value=WIDTH; this.h.value=HEIGHT; if (flipb) this.f.value='1'; else this.f.value='';
+            if (document.castling.czyjruch[0].checked) this.z.value='w'; else this.z.value='b' ; return true;"
+>
+ <input type='hidden' name='f' > <input type='hidden' name='d' > 
+ <input type='hidden' name='w' > <input type='hidden' name='h' >
+ <input type='hidden' name='z' >
+ <input type='submit' value="diagram" style='margin-left:0.5em; margin-right:0.5em' >
+</form>
+<button style='margin-left:0.5em; margin-right:0.5em' onclick="onclearboard();nocastling();flipb=false;">empty</button>
+<button style='margin-left:0.5em; margin-right:0.5em' onclick="onstartingposition();document.castling.czyjruch[0].checked=true;castlestart();flipb=false;">start</button>
+
+
+<form name='castling' style='padding:0; margin:0;'>
+<table style='margin-left:auto; margin-right:auto; border-collapse:collapse; margin-top:1em; margin-bottom:1em;'>
+<tr>
+<td style='padding-right:1em; text-align:left;'><input type="radio" name="czyjruch">White</td>
+<td>O-O<input type=checkbox name=WhiteOO style="margin-right:2em;" /></td>
+<td>O-O-O<input type=checkbox name=WhiteOOO /></td>
+</tr>
+<tr><td colspan=3 style='height:0.5em;'></td></tr>
+<tr>
+<td style='padding-right:1em; text-align:left;'><input type="radio" name="czyjruch">Black</td>
+<td>O-O<input type=checkbox name=BlackOO style="margin-right:2em;" /></td>
+<td>O-O-O<input type=checkbox name=BlackOOO /></td>
+</tr>
+</table>
+</form>
+
+<div style='margin-top:1em;'>
+<button style='margin-left:0.5em; margin-right:0.5em' onclick="onbackundo();return false">undo</button>
+<button style='margin-left:0.5em; margin-right:0.5em' onclick="invertboard();swaptomove();invertcastle();return false">invert</button>
+<button style='margin-left:0.5em; margin-right:0.5em' onclick="onleftright();nocastling();return false">sides</button>
+<button style='margin-left:0.5em; margin-right:0.5em' onclick="flipdeska();flipb=!flipb;return false;">flip</button>
+</div>
+
+
+<script>
+document.castling.czyjruch[0].checked = true;
+castlestart();
+onclearboard();
+nocastling();
+</script>
+
+
+</fieldset>
+
+<form id='animagramform'
+      method='post'
+      target='_blank'
+      action='https://www.apronus.com/chess/wizboard/diagrams/arrowgif.php'
+      onsubmit='onsubmit_animagram();'
+      style='margin-top:1em;'
+>
+<fieldset><button>animated diagram</button></fieldset>
+<fieldset>
+ <input type='checkbox' id='showarrows' checked>arrows
+ <input type='checkbox' id='showcoordinates' checked>coordinates
+</fieldset>
+<fieldset>
+ delay: 
+ <input type='text' name='de' id='delay' value='120' style='width:3em;'>
+ (100 = one second)
+</fieldset>
+   <input type='hidden' name='q'>
+   <input type='hidden' name='a'>
+   <input type='hidden' name='w'>
+   <input type='hidden' name='h'>
+   <input type='hidden' name='f'>
+<div>
+<input type='radio' name='x' value='p' checked>show diagram in new window to save manually<br>
+<span style='display:none;'>
+<input type='radio' name='x' value='l' id='linktoanimateddiagram'>show diagram in new window to copy the link from there<br>
+</span>
+<input type='radio' name='x' value='d'>direct download by the browser
+</div>
+<div>
+Animation sequence <input type='checkbox' id='gallerybox' onchange='updategallery();'>
+<span id='animationcontrols' style='display:none;'>
+<!--<button onclick='modifyhistoria();return false;'>remove unchecked</button>-->
+<select onchange='setGallerySize(this.value);'>
+  <option value="18">tiny</option>
+  <option value="24" selected>small</option>
+  <option value="36">normal</option>
+</select>
+</span>
+
+<a href='https://cloudconvert.com/gif-to-mp4' target='_blank'>convert gif to mp4</a>
+
+</div>
+<div id='gallery'></div>
+</form>
+
+<script>
+function setGallerySize(px)
+{
+ document.getElementById('gallerysquareimage').innerHTML
+ = "#gallery img { width: "+px+"px; height: "+px+"px; }"; 
+}
+
+</script>
+
+
+
+</FIELDSET>
+<!--
+<button title="to avoid viewing an old version from the browser's memory" onclick="window.location.reload(true)">Reload</button>
+-->
+
+<hr style='border: 0 white; margin:0;'>
+
+
+
+<h2>Interactive Chessboards Manifesto</h2>
+
+Every chess diagram on the Internet should be interactive in the following ways:
+
+<ul>
+<li>One can generate the FEN of the position that is shown on the diagram.
+<li>One can generate the PGN of the game fragment of an animated diagram.
+<li>One can easily start an interface that allows making moves on the chessboard to study the position by analysis.
+<li>One can easily start an interface for playing the position against computer from both sides.
+<li>Play against computer should allow the user to make all the moves by oneself and force the computer to move at any moment.
+<li>The positions and game lines that are played out in the two points above should satisfy the first points of always being able to generate the FEN and PGN.
+<li>The board can be flipped at any moment so that there is always the choice between having White or Black at the bottom.
+</ul>
+
+<p>
+The Apronus.com chess service implements this vision and is available to anyone for free.
+Additionally, you can make static and animated diagrams as images for posting in your blog or website.
+Chess authors can participate in this vision by placing links to Apronus.com pages with the chess content encoded in the links.
+For example, you can wrap the &lt;a&gt; HTML tag around any image of a chess position 
+and put a link into <i>href</i> that encodes the position and directs the user to play against computer at Apronus.com.
+The interfaces here provide ready-made HTML code to embed in your pages.
+</p>
+
+<section style='margin-bottom:2em;'>
+<h3>Different chessboard dimensions for chess variants</h3>
+
+<form method="get" action="//www.apronus.com/chess/pgnviewer/"
+      style='margin-bottom:1em;'>
+<button>Create a chessboard</button>
+<select name="w">
+  <option value="2">2</option>
+  <option value="3">3</option>
+  <option value="4">4</option>
+  <option value="5">5</option>
+  <option value="6" selected="selected">6</option>
+  <option value="7">7</option>
+  <option value="8">8</option>
+  <option value="9">9</option>
+  <option value="10">10</option>
+  <option value="11">11</option>
+  <option value="12">12</option>
+  <option value="13">13</option>
+  <option value="14">14</option>
+  <option value="15">15</option>
+  <option value="16">16</option>
+</select> x <select name="h">
+  <option value="2">2</option>
+  <option value="3">3</option>
+  <option value="4">4</option>
+  <option value="5">5</option>
+  <option value="6" selected="selected">6</option>
+  <option value="7">7</option>
+  <option value="8">8</option>
+  <option value="9">9</option>
+  <option value="10">10</option>
+  <option value="11">11</option>
+  <option value="12">12</option>
+</select>
+</form>
+<fieldset class='inlinediv'>or modify the URL, e.g. https://www.apronus.com/</fieldset><fieldset class='inlinediv'>chess/pgnviewer/<b>?w=16&amp;h=5</b>.</fieldset>
 </section>
 
-<script type="text/javascript" src="js/scripts.js"></script>
+<aside><p>Chess at Apronus.com is free for non-commercial use only.</p></aside>
+
+<script>
+if (korpalskichess === '1')
+{
+	document.getElementById('gallerybox').checked = true;
+	updategallery();
+	document.getElementById('playboard').disabled = true;
+	document.getElementById('draftboard').checked = true;
+	refreshview();
+	document.getElementById('bareboardtable').style.background = '#444';
+	document.getElementById('linktoanimateddiagram').checked = true;
+	for (let i = 0; i < 8; i++)
+	{
+		const n = 8 + i*17;
+		const td = document.getElementById('td' + n);
+		td.style.visibility = 'hidden';
+		td.style.pointerEvents = 'none';
+	}
+}
+</script>
 
 </body>
 </html>
